@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Employee Task Management System</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['Sora', 'sans-serif'],
+          sans: ['Inter', 'sans-serif'],
+          mono: ['IBM Plex Mono', 'monospace'],
+        },
+        colors: {
+          ink:    { DEFAULT: '#12161f', soft: '#667085', 900:'#0b0e14' },
+          surface: '#ffffff',
+          canvas: '#f5f6f8',
+          line:   '#e7e9ee',
+          navy:   { DEFAULT: '#0c1220', 800:'#121a2c', 700:'#182238' },
+          copper: { 50:'#fff4ec', 100:'#ffe6d2', 300:'#ff9f4d', 400:'#ff8a2b', 500:'#f5760f', 600:'#d9640a', 700:'#b34f08' },
+          signal: { teal:'#0e9f8e', amber:'#c2700f', rose:'#e0384c', slate:'#8890a0' },
+        },
+        boxShadow: {
+          card: '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
+          pop: '0 20px 50px -12px rgba(16,24,40,0.35)',
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  [x-cloak] { display: none !important; }
+  html, body { height: 100%; }
+  body { background: #f5f6f8; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #d8dbe2; border-radius: 8px; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .kanban-col { min-height: 120px; }
+  .drop-hint { outline: 2px dashed #f5760f; outline-offset: -4px; background: #fff4ec; }
+
+  @keyframes floatUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .enter { animation: floatUp .35s cubic-bezier(.16,1,.3,1) both; }
+  .enter-1 { animation-delay: .02s; } .enter-2 { animation-delay: .06s; }
+  .enter-3 { animation-delay: .10s; } .enter-4 { animation-delay: .14s; } .enter-5 { animation-delay: .18s; }
+
+  @keyframes rowIn { from { opacity: 0; transform: translateX(-4px);} to { opacity: 1; transform: translateX(0);} }
+  tbody tr { animation: rowIn .25s ease both; }
+
+  .press { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease, color .12s ease; }
+  .press:active { transform: scale(0.97); }
+  .lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .lift:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -8px rgba(16,24,40,0.15); }
+  .bar-fill { transition: width .6s cubic-bezier(.16,1,.3,1); }
+
+  @keyframes badgePop { 0%{transform:scale(.6);opacity:0;} 60%{transform:scale(1.06);opacity:1;} 100%{transform:scale(1);} }
+  .badge-pop { animation: badgePop .25s ease both; }
+  @keyframes pulseDot { 0%,100%{box-shadow:0 0 0 0 rgba(224,56,76,.5);} 50%{box-shadow:0 0 0 5px rgba(224,56,76,0);} }
+  .pulse-dot { animation: pulseDot 1.6s ease-out infinite; }
+
+  @keyframes shimmer { 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
+  .skeleton { background: linear-gradient(90deg,#eef0f3 0%,#f7f8fa 50%,#eef0f3 100%); background-size: 800px 100%; animation: shimmer 1.4s ease-in-out infinite; }
+
+  [draggable="true"] { transition: transform .15s ease, box-shadow .15s ease; }
+  [draggable="true"]:active { transform: scale(1.02) rotate(-1deg); box-shadow: 0 14px 28px -10px rgba(16,24,40,0.3); }
+
+  /* ---------- login ---------- */
+  .login-bg { background: radial-gradient(900px 500px at 15% 10%, rgba(245,118,15,0.18), transparent 60%), radial-gradient(800px 500px at 85% 90%, rgba(14,159,142,0.14), transparent 60%), linear-gradient(160deg, #0b0e14 0%, #121a2c 60%, #1a1712 100%); }
+  .login-grid { background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px); background-size: 42px 42px; mask-image: radial-gradient(circle at 50% 40%, black 0%, transparent 75%); }
+  .login-logo { background: linear-gradient(135deg, #ff9f4d 0%, #f5760f 50%, #b34f08 100%); box-shadow: 0 10px 30px -8px rgba(245,118,15,0.6); }
+  .login-card { background: rgba(255,255,255,0.97); box-shadow: 0 30px 70px -20px rgba(0,0,0,0.55); }
+  .login-input { background: #f6f5f1; border: 1.5px solid #e7e4dc; }
+  .login-input:focus { outline: none; background: #fff; border-color: #f5760f; box-shadow: 0 0 0 4px rgba(245,118,15,0.14); }
+  .login-btn { background: linear-gradient(135deg, #ff8a2b 0%, #d9640a 100%); box-shadow: 0 10px 24px -8px rgba(245,118,15,0.55); }
+  .login-btn:hover:not(:disabled) { filter: brightness(1.05); }
+
+  /* ---------- top logo bar ---------- */
+  .brand-bar { background: linear-gradient(180deg, #0c1220 0%, #101828 100%); }
+
+  /* ---------- kpi cards ---------- */
+  .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display:flex; align-items:center; justify-content:center; }
+
+  /* ---------- donut chart ---------- */
+  .donut-ring { transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .donut-seg { transition: stroke-dasharray .6s ease; }
+
+  /* ---------- notif / chat ---------- */
+  .notif-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); }
+  .notif-btn:hover { background: rgba(255,255,255,0.12); }
+  @keyframes bellRing { 0%,100%{transform:rotate(0);} 10%,30%{transform:rotate(-12deg);} 20%,40%{transform:rotate(12deg);} 50%{transform:rotate(0);} }
+  .bell-ring { animation: bellRing .6s ease-in-out; }
+  .notif-item { transition: background-color .15s ease; }
+  .notif-item:hover { background: #f8f9fb; }
+  .notif-item.is-unread { background: linear-gradient(90deg, rgba(245,118,15,0.07), transparent 60%); }
+  .notif-dot { box-shadow: 0 0 0 3px rgba(245,118,15,0.15); }
+
+  .chat-bubble-btn { background: linear-gradient(135deg, #ff8a2b 0%, #d9640a 100%); box-shadow: 0 8px 24px -6px rgba(245,118,15,0.55); }
+  .chat-bubble-btn:hover { transform: translateY(-2px) scale(1.04); }
+  .chat-bubble-mine { background: linear-gradient(135deg, #ff8a2b 0%, #d9640a 100%); color:#fff; border-radius: 18px 18px 4px 18px; }
+  .chat-bubble-theirs { background:#fff; border:1px solid #e7e9ee; border-radius: 18px 18px 18px 4px; }
+  @keyframes chatMsgIn { from{opacity:0; transform: translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .chat-msg-in { animation: chatMsgIn .25s ease both; }
+  @keyframes liveDotPulse { 0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.6);} 50%{box-shadow:0 0 0 4px rgba(52,211,153,0);} }
+  .live-dot { animation: liveDotPulse 1.8s ease-in-out infinite; }
+
+  /* ---------- browser-notification permission banner ---------- */
+  .notif-banner { background: linear-gradient(90deg, rgba(245,118,15,0.12), rgba(245,118,15,0.04)); border: 1px solid rgba(245,118,15,0.25); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body class="font-sans text-ink antialiased" x-data="app()" x-init="init()">
+
+  <!-- ============ LOGIN ============ -->
+  <div x-show="!loggedIn" x-cloak class="min-h-screen flex items-center justify-center p-4 login-bg relative overflow-hidden">
+    <div class="absolute inset-0 login-grid pointer-events-none"></div>
+    <div class="relative w-full max-w-sm enter">
+      <div class="text-center mb-7">
+        <div class="login-logo w-14 h-14 rounded-2xl flex items-center justify-center text-white font-display font-bold text-xl mx-auto mb-4">T</div>
+        <h1 class="font-display font-bold text-3xl text-white tracking-tight">Task Manager</h1>
+        <p class="text-sm text-white/50 mt-1.5 font-mono">sign in to view your workload</p>
+      </div>
+      <div class="enter enter-1 login-card rounded-[26px] p-8">
+        <div x-show="loginError" x-transition class="bg-rose-50 text-signal-rose text-sm rounded-xl px-3.5 py-2.5 mb-4 border border-rose-100" x-text="loginError"></div>
+        <label class="text-[11px] font-bold uppercase tracking-wide text-ink-soft">Username</label>
+        <input x-model="loginForm.username" @keydown.enter="doLogin()" type="text" placeholder="Enter your username"
+          class="login-input mt-1.5 mb-4 w-full px-4 py-3 rounded-2xl text-sm transition-all duration-200">
+        <label class="text-[11px] font-bold uppercase tracking-wide text-ink-soft">Password</label>
+        <input x-model="loginForm.password" @keydown.enter="doLogin()" type="password" placeholder="Enter your password"
+          class="login-input mt-1.5 mb-6 w-full px-4 py-3 rounded-2xl text-sm transition-all duration-200">
+        <button @click="doLogin()" :disabled="loggingIn"
+          class="login-btn press w-full py-3 rounded-2xl text-white text-sm font-bold disabled:opacity-60 flex items-center justify-center gap-2">
+          <svg x-show="loggingIn" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg>
+          <span x-text="loggingIn ? 'Signing in…' : 'Login'"></span>
+        </button>
+      </div>
+      <p class="text-center text-[11px] text-white/30 mt-5 font-mono">secured workspace · your data stays private</p>
+    </div>
+  </div>
+
+  <!-- ============ APP SHELL (no sidebar — simple top tab bar) ============ -->
+  <template x-if="loggedIn">
+  <div class="flex flex-col h-screen overflow-hidden">
+
+    <!-- ---- browser-notification permission banner ---- -->
+    <div x-show="showNotifBanner" x-cloak x-transition class="notif-banner px-4 sm:px-6 py-2 flex items-center justify-between gap-3 text-xs shrink-0">
+      <span class="text-copper-700 font-medium">Turn on browser notifications so you never miss a new task or a due-soon reminder.</span>
+      <div class="flex items-center gap-2 shrink-0">
+        <button @click="requestBrowserNotificationPermission()" class="press px-3 py-1.5 rounded-lg bg-copper-500 text-white font-bold hover:bg-copper-600">Enable</button>
+        <button @click="showNotifBanner = false" class="press px-2 py-1.5 text-ink-soft hover:text-ink font-semibold">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- ---- brand + header row ---- -->
+    <header class="brand-bar h-16 shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 z-20 text-white">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center font-display font-bold text-sm shrink-0" style="background: linear-gradient(135deg, #ff9f4d 0%, #f5760f 60%, #b34f08 100%);">T</div>
+        <div class="leading-tight min-w-0">
+          <div class="text-sm font-display font-bold truncate">Task Manager</div>
+          <p class="text-[11px] text-white/50 font-mono truncate">
+            <template x-if="isAdminLike(currentUser.role) && !selectedPerson"><span>all employees · <span x-text="peopleList.length"></span> total</span></template>
+            <template x-if="isAdminLike(currentUser.role) && selectedPerson"><span>viewing <span class="font-semibold text-copper-300" x-text="selectedPersonName"></span>'s sheets</span></template>
+            <span x-show="!isAdminLike(currentUser.role)">your tasks only</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <button x-show="isAdminLike(currentUser.role) && selectedPerson" x-transition @click="backToPeople()"
+          class="press hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/15 text-xs font-semibold text-white/80 hover:text-white">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          Back
+        </button>
+
+        <!-- notification bell -->
+        <div class="relative">
+          <button @click="toggleNotifications()" class="notif-btn press relative w-9 h-9 rounded-lg flex items-center justify-center text-white/80 hover:text-white" :class="bellAnimating ? 'bell-ring' : ''">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span x-show="unreadNotifCount > 0" x-cloak class="badge-pop absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-signal-rose text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-navy" x-text="unreadNotifCount > 9 ? '9+' : unreadNotifCount"></span>
+          </button>
+          <div x-show="notifOpen" x-cloak @click.outside="notifOpen = false"
+               x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95 -translate-y-1" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+               class="absolute right-0 mt-2 w-[340px] max-h-[420px] rounded-2xl border border-line shadow-pop bg-white overflow-hidden flex flex-col text-ink z-40">
+            <div class="px-4 py-3 border-b border-line flex items-center justify-between shrink-0">
+              <h3 class="text-sm font-bold font-display">Notifications</h3>
+              <button x-show="unreadNotifCount > 0" @click="markAllNotificationsRead()" class="text-xs font-semibold text-copper-600 hover:underline">Mark all read</button>
+            </div>
+            <div class="overflow-y-auto flex-1">
+              <div x-show="notifLoading" class="py-8 text-center text-sm text-ink-soft">Loading…</div>
+              <div x-show="!notifLoading && notifications.length === 0" class="py-10 text-center text-sm text-ink-soft flex flex-col items-center gap-2">
+                <span class="text-2xl">🔔</span><span>No notifications yet</span>
+              </div>
+              <template x-for="n in notifications" :key="n.id">
+                <div class="notif-item px-4 py-3 border-b border-line last:border-b-0 cursor-pointer" :class="!n.read ? 'is-unread' : ''" @click="openNotification(n)">
+                  <div class="flex items-start gap-2.5">
+                    <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" :class="!n.read ? 'bg-copper-500 notif-dot' : 'bg-line'"></span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold leading-snug" x-text="n.title"></p>
+                      <p class="text-xs text-ink-soft mt-0.5 leading-snug" x-text="n.message"></p>
+                      <p class="text-[11px] text-ink-soft/70 mt-1 font-mono" x-text="n.timestamp"></p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-2 pr-3 border-r border-white/15">
+          <div class="w-8 h-8 rounded-full bg-copper-500 text-white flex items-center justify-center font-bold text-sm shrink-0" x-text="(currentUser.fullName||'?').charAt(0).toUpperCase()"></div>
+          <div class="leading-tight">
+            <div class="text-sm font-semibold" x-text="currentUser.fullName"></div>
+            <div class="text-[11px] text-white/50" x-text="currentUser.role"></div>
+          </div>
+        </div>
+
+        <button @click="refreshCurrentView()" :disabled="loading" class="press inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 text-xs font-semibold text-white/80 hover:text-white disabled:opacity-50">
+          <svg :class="loading ? 'animate-spin' : ''" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg>
+          <span class="hidden sm:inline">Refresh</span>
+        </button>
+        <button x-show="isAdminLike(currentUser.role) && selectedPerson" x-transition @click="openAdd()" class="press inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-copper-500 hover:bg-copper-600 text-white text-xs font-bold">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="hidden sm:inline">New task</span>
+        </button>
+        <button @click="logout()" class="press px-3 py-2 rounded-lg border border-white/15 text-xs font-semibold text-white/80 hover:text-white">Logout</button>
+      </div>
+    </header>
+
+    <!-- ---- simple horizontal tab bar (replaces sidebar) ---- -->
+    <div class="bg-white border-b border-line px-4 sm:px-6 flex items-center gap-1 overflow-x-auto shrink-0">
+      <button @click="activeNav='dashboard'; activeStatFilter=null; statusFilter=''; priorityFilter=''"
+        class="press px-3.5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap"
+        :class="activeNav==='dashboard' ? 'border-copper-500 text-copper-600' : 'border-transparent text-ink-soft hover:text-ink'">
+        Dashboard
+      </button>
+      <button @click="activeNav='mytasks'; activeStatFilter=null; statusFilter=''"
+        class="press px-3.5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap"
+        :class="activeNav==='mytasks' ? 'border-copper-500 text-copper-600' : 'border-transparent text-ink-soft hover:text-ink'">
+        My Tasks
+      </button>
+      <button x-show="isAdminLike(currentUser.role)" @click="activeNav='employees'"
+        class="press px-3.5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap"
+        :class="activeNav==='employees' ? 'border-copper-500 text-copper-600' : 'border-transparent text-ink-soft hover:text-ink'">
+        Employees
+      </button>
+      <button @click="activeNav='pending'; statusFilter='Pending'; activeStatFilter=null"
+        class="press px-3.5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap"
+        :class="activeNav==='pending' ? 'border-copper-500 text-copper-600' : 'border-transparent text-ink-soft hover:text-ink'">
+        Pending
+      </button>
+      <button @click="activeNav='overdue'; statusFilter=''; activeStatFilter='overdue'"
+        class="press px-3.5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap"
+        :class="activeNav==='overdue' ? 'border-copper-500 text-copper-600' : 'border-transparent text-ink-soft hover:text-ink'">
+        Overdue
+      </button>
+      <button x-show="isAdminLike(currentUser.role)" @click="activeNav='apps'; loadApps()"
+        class="press px-3.5 py-3 text-sm font-semibold border-b-2 whitespace-nowrap"
+        :class="activeNav==='apps' ? 'border-copper-500 text-copper-600' : 'border-transparent text-ink-soft hover:text-ink'">
+        Apps
+      </button>
+    </div>
+
+    <!-- ---- scrollable content ---- -->
+    <main class="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+
+      <!-- dashboard title row -->
+      <div x-show="activeNav==='dashboard'" x-cloak class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-display font-extrabold tracking-tight">Dashboard</h1>
+          <p class="text-sm text-ink-soft mt-0.5">Overview of employee tasks and work progress</p>
+        </div>
+        <div class="text-sm text-ink-soft font-mono bg-white border border-line rounded-lg px-3 py-1.5" x-text="todayLabel"></div>
+      </div>
+
+      <!-- ================= APPS TAB (Admin/Manager only) ================= -->
+      <div x-show="activeNav==='apps' && isAdminLike(currentUser.role)" x-cloak class="space-y-4">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 class="text-2xl font-display font-extrabold tracking-tight">Apps</h1>
+            <p class="text-sm text-ink-soft mt-0.5">Links to your other Apps Script tools — managed from the "Apps" tab in the central sheet</p>
+          </div>
+          <button @click="loadApps()" class="press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-white text-sm font-semibold text-ink-soft hover:text-ink">Refresh</button>
+        </div>
+
+        <div x-show="appsLoading" class="py-16 text-center text-sm text-ink-soft">Loading apps…</div>
+
+        <div x-show="!appsLoading && apps.length === 0" x-cloak class="bg-surface rounded-2xl border border-dashed border-line py-16 flex flex-col items-center gap-2 text-center">
+          <div class="text-3xl">🔗</div>
+          <p class="text-sm font-semibold">No apps listed yet</p>
+          <p class="text-xs text-ink-soft max-w-xs">Add rows to the "Apps" tab in the central sheet: Name | URL | Description | Icon.</p>
+        </div>
+
+        <div x-show="!appsLoading && apps.length > 0" x-cloak class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <template x-for="(a, i) in apps" :key="a.name + i">
+            <a :href="a.url" target="_blank" class="lift press bg-surface rounded-2xl border border-line shadow-card p-5 flex items-start gap-4 no-underline text-ink">
+              <div class="w-11 h-11 rounded-xl bg-navy text-copper-300 flex items-center justify-center text-xl shrink-0" x-text="a.icon || '🔗'"></div>
+              <div class="min-w-0">
+                <div class="text-sm font-bold font-display truncate" x-text="a.name"></div>
+                <div class="text-xs text-ink-soft mt-1 leading-snug" x-text="a.description"></div>
+                <div class="text-[11px] text-copper-600 font-semibold mt-2">Open →</div>
+              </div>
+            </a>
+          </template>
+        </div>
+      </div>
+
+      <!-- admin employee-picker toggle row -->
+      <div x-show="activeNav==='dashboard' && isAdminLike(currentUser.role) && !selectedPerson" x-cloak class="flex justify-end gap-2">
+        <button @click="runAllTasksDebug()" :disabled="allTasksDebugLoading" class="press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-white text-sm font-semibold text-signal-amber hover:opacity-80 disabled:opacity-50">
+          <span x-text="allTasksDebugLoading ? 'Checking…' : '🔍 Debug tasks'"></span>
+        </button>
+        <button @click="showEmployeePicker = !showEmployeePicker" class="press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-line bg-white text-sm font-semibold text-ink-soft hover:text-ink">
+          <span x-text="showEmployeePicker ? 'Hide employee sheets ↑' : '📁 Browse employee sheets →'"></span>
+        </button>
+      </div>
+      <pre x-show="allTasksDebugOutput" x-cloak class="bg-navy text-copper-100 text-[11px] p-4 rounded-lg overflow-x-auto whitespace-pre-wrap font-mono" x-text="allTasksDebugOutput"></pre>
+
+      <section x-show="activeNav==='dashboard' && isAdminLike(currentUser.role) && !selectedPerson && showEmployeePicker" x-cloak class="bg-surface rounded-2xl border border-line shadow-card p-6">
+        <h2 class="text-sm font-bold mb-1 font-display flex items-center gap-1.5"><span class="text-copper-500">◆</span> Employee Sheets</h2>
+        <p class="text-xs text-ink-soft mb-4">Click a name to view that employee's personal Checklist / FMS sheets and pending-work scan.</p>
+        <div x-show="peopleLoading" class="py-10 text-center text-sm text-ink-soft">Loading employees…</div>
+        <div x-show="!peopleLoading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <template x-for="(p, i) in peopleList" :key="p.key">
+            <div @click="selectPerson(p)" class="group lift press border border-line rounded-2xl p-5 text-center hover:border-copper-400 cursor-pointer select-none bg-white"
+                 :style="{animationDelay: (Math.min(i,12) * 30) + 'ms'}" x-init="$el.classList.add('enter')">
+              <div class="w-12 h-12 rounded-full bg-navy text-copper-300 flex items-center justify-center mx-auto mb-3 font-display font-bold text-lg group-hover:bg-copper-500 group-hover:text-white transition-colors" x-text="p.name.charAt(0).toUpperCase()"></div>
+              <div class="text-sm font-semibold truncate" x-text="p.name"></div>
+              <div class="text-[11px] text-ink-soft mt-1 group-hover:text-copper-600">View sheets →</div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <!-- ================= KPI CARDS (dashboard only) ================= -->
+      <section x-show="activeNav==='dashboard'" x-cloak class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+        <template x-for="(s, i) in kpiCards" :key="s.label">
+          <div class="lift press bg-surface rounded-2xl border border-line shadow-card p-4 cursor-pointer"
+               :class="['enter enter-' + (i+1), activeStatFilter === s.filterValue ? 'ring-2 ring-copper-400' : '']"
+               @click="toggleStatFilter(s.filterValue)">
+            <div class="flex items-start justify-between">
+              <div class="kpi-icon" :style="{background: s.bg, color: s.fg}">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" x-html="s.icon"></svg>
+              </div>
+              <span class="w-2 h-2 rounded-full mt-1" :class="s.filterValue === 'overdue' && s.value > 0 ? 'pulse-dot' : ''" :style="{background: s.dot}"></span>
+            </div>
+            <div class="text-[11px] font-bold uppercase tracking-wide text-ink-soft mt-3" x-text="s.label"></div>
+            <div class="text-2xl font-display font-extrabold tabular mt-0.5" x-text="s.value"></div>
+            <div class="text-[11px] text-ink-soft mt-1" x-text="s.sub"></div>
+          </div>
+        </template>
+      </section>
+
+      <!-- ================= PERFORMANCE + DONUT (dashboard only) ================= -->
+      <section x-show="activeNav==='dashboard'" x-cloak class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+
+        <div class="xl:col-span-3 bg-surface rounded-2xl border border-line shadow-card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-bold font-display">Employee Performance</h2>
+            <select x-model="performanceRange" class="text-xs border border-line rounded-lg px-2.5 py-1.5 bg-white">
+              <option value="all">All Time</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
+          <div x-show="employeePerformance.length === 0" class="text-sm text-ink-soft py-6 text-center">No task data yet.</div>
+          <div class="space-y-3.5">
+            <template x-for="ep in employeePerformance" :key="ep.key">
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1">
+                  <span class="font-semibold truncate" x-text="ep.name"></span>
+                  <span class="font-mono font-bold text-ink-soft" x-text="ep.pct + '%'"></span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-canvas overflow-hidden">
+                  <div class="bar-fill h-full rounded-full" :style="{width: ep.pct + '%', background: 'linear-gradient(90deg,#ff9f4d,#d9640a)'}"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="xl:col-span-2 bg-surface rounded-2xl border border-line shadow-card p-5">
+          <h2 class="text-sm font-bold font-display mb-4">Task Status Overview</h2>
+          <div class="flex items-center gap-6">
+            <svg viewBox="0 0 120 120" class="w-32 h-32 shrink-0">
+              <g class="donut-ring">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#eef0f3" stroke-width="16"/>
+                <template x-for="(seg, i) in donutSegments" :key="seg.label">
+                  <circle cx="60" cy="60" r="50" fill="none" :stroke="seg.color" stroke-width="16"
+                    class="donut-seg" stroke-linecap="butt"
+                    :stroke-dasharray="seg.dash + ' ' + (314.159 - seg.dash)"
+                    :stroke-dashoffset="-seg.offset"></circle>
+                </template>
+              </g>
+              <text x="60" y="56" text-anchor="middle" class="font-display font-extrabold" style="font-size:20px; fill:#12161f;" x-text="donutTotal"></text>
+              <text x="60" y="72" text-anchor="middle" style="font-size:9px; fill:#667085;">tasks</text>
+            </svg>
+            <div class="space-y-2 min-w-0 flex-1">
+              <template x-for="seg in donutSegments" :key="seg.label">
+                <div class="flex items-center justify-between text-xs gap-2">
+                  <span class="flex items-center gap-1.5 min-w-0">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{background: seg.color}"></span>
+                    <span class="truncate" x-text="seg.label"></span>
+                  </span>
+                  <span class="font-mono font-semibold shrink-0" x-text="seg.count + ' (' + seg.pct + '%)'"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= EMPLOYEES GRID (dashboard + employees tab) ================= -->
+      <section x-show="isAdminLike(currentUser.role) && (activeNav==='dashboard' || activeNav==='employees')" x-cloak class="bg-surface rounded-2xl border border-line shadow-card p-5">
+        <h2 class="text-sm font-bold font-display mb-4">Employees</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <template x-for="p in peopleList" :key="'compact-'+p.key">
+            <div @click="selectPerson(p)" class="lift press border border-line rounded-xl p-4 text-center cursor-pointer bg-white hover:border-copper-400">
+              <div class="w-10 h-10 rounded-full bg-copper-50 text-copper-600 flex items-center justify-center mx-auto mb-2 font-bold text-sm" x-text="p.name.charAt(0).toUpperCase()"></div>
+              <div class="text-xs font-semibold truncate" x-text="p.name"></div>
+              <div class="text-[10px] text-ink-soft mt-0.5" x-text="taskCountFor(p.key) + ' Tasks'"></div>
+              <div class="text-[10px] text-copper-600 font-semibold mt-1">View →</div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <!-- ================= DRILL-IN: pending work + my sheets ================= -->
+      <template x-if="activeNav !== 'apps' && (!isAdminLike(currentUser.role) || selectedPerson)">
+      <div class="space-y-6">
+        <div x-show="drillLoading" class="py-16 flex flex-col items-center gap-3 text-ink-soft">
+          <svg class="animate-spin w-7 h-7 text-copper-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg>
+          <p class="text-sm">Loading employee data…</p>
+        </div>
+
+        <template x-if="!drillLoading">
+        <div class="space-y-6">
+          <section class="bg-surface rounded-2xl border border-line shadow-card p-5">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div>
+                <h2 class="text-sm font-bold font-display flex items-center gap-1.5"><span class="text-signal-rose">▲</span> Pending &amp; Overdue Work</h2>
+                <p class="text-xs text-ink-soft">Auto-scanned from linked Checklist / FMS / Sales Report sheets</p>
+              </div>
+              <div class="flex gap-2">
+                <button @click="loadPendingWork()" class="px-3 py-1.5 rounded-lg border border-line text-xs font-semibold text-ink-soft hover:text-ink">Refresh</button>
+                <button x-show="isAdminLike(currentUser.role)" @click="runDebugScan()" class="px-3 py-1.5 rounded-lg border border-line text-xs font-semibold text-signal-amber hover:opacity-80">Debug Scan</button>
+              </div>
+            </div>
+            <pre x-show="debugOutput" x-cloak class="bg-navy text-copper-100 text-[11px] p-4 rounded-lg overflow-x-auto whitespace-pre-wrap mb-3 font-mono" x-text="debugOutput"></pre>
+            <div x-show="pendingLoading" class="py-6 text-center text-sm text-ink-soft">Scanning sheets…</div>
+            <div x-show="!pendingLoading && pendingWork.length === 0" x-cloak class="bg-signal-teal/10 text-signal-teal text-sm rounded-lg px-4 py-3 text-center font-semibold">✓ All caught up — nothing pending or overdue!</div>
+            <div x-show="!pendingLoading && pendingWork.length > 0" x-cloak class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead><tr class="text-[11px] uppercase tracking-wide text-ink-soft border-b border-line">
+                  <th class="text-left font-bold px-3 py-2">Task</th><th class="text-left font-bold px-3 py-2">Description</th>
+                  <th class="text-left font-bold px-3 py-2">Due</th><th class="text-left font-bold px-3 py-2">Priority</th>
+                  <th class="text-left font-bold px-3 py-2">Status</th><th class="text-left font-bold px-3 py-2">Source</th><th class="px-3 py-2"></th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="(p, idx) in pendingWork" :key="idx">
+                    <tr class="border-t border-line" :class="p.isOverdue ? 'bg-rose-50/50' : ''">
+                      <td class="px-3 py-2.5 font-semibold"><span x-show="p.isOverdue" class="mr-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-signal-rose text-white">OVERDUE</span><span x-text="p.task"></span></td>
+                      <td class="px-3 py-2.5 text-ink-soft max-w-[220px] truncate" :title="p.description" x-text="p.description || '—'"></td>
+                      <td class="px-3 py-2.5 whitespace-nowrap font-mono text-xs" x-text="p.dueDate"></td>
+                      <td class="px-3 py-2.5"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold" :class="priorityClass(p.priority)" x-text="p.priority || '—'"></span></td>
+                      <td class="px-3 py-2.5" x-text="p.status"></td>
+                      <td class="px-3 py-2.5 text-ink-soft whitespace-nowrap">📄 <span x-text="p.sheetLabel"></span><span x-show="p.owner"> • 👤 <span x-text="p.owner"></span></span></td>
+                      <td class="px-3 py-2.5 text-right"><a :href="p.sheetUrl" target="_blank" class="text-copper-600 font-semibold text-xs hover:underline">Open Sheet →</a></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section x-show="mySheets.length > 0" x-cloak class="bg-surface rounded-2xl border border-line shadow-card p-5">
+            <h2 class="text-sm font-bold mb-1 font-display">📁 <span x-text="isAdminLike(currentUser.role) ? (selectedPersonName + ' Sheets') : 'My Sheets'"></span></h2>
+            <p class="text-xs text-ink-soft mb-3">Click a sheet to preview today's pending items · double-click to open the full sheet</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <template x-for="(s, i) in mySheets" :key="s.url">
+                <div @click="toggleSheetPreview(s)" @dblclick="window.open(s.url, '_blank')"
+                     class="lift press border rounded-2xl p-5 text-center cursor-pointer select-none bg-white"
+                     :class="previewSheetUrl === s.url ? 'border-copper-400 ring-2 ring-copper-400/30' : 'border-line hover:border-copper-400'">
+                  <div class="w-12 h-12 rounded-full bg-copper-50 text-copper-600 flex items-center justify-center mx-auto mb-3 font-bold text-lg">📊</div>
+                  <div class="text-sm font-semibold truncate" x-text="s.label"></div>
+                  <div class="text-[11px] text-ink-soft mt-1" x-show="isAdminLike(currentUser.role)" x-text="s.owner"></div>
+                  <div class="text-[11px] text-ink-soft mt-1" x-text="previewSheetUrl === s.url ? 'Hide preview ↑' : 'Preview pending →'"></div>
+                </div>
+              </template>
+            </div>
+            <div x-show="previewSheetUrl" x-cloak class="mt-4 border-t border-line pt-4">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-xs font-bold uppercase tracking-wide text-ink-soft">Pending today in "<span x-text="previewSheetLabel"></span>"</h3>
+                <div class="flex items-center gap-2"><a :href="previewSheetUrl" target="_blank" class="text-xs font-semibold text-copper-600 hover:underline">Open full sheet →</a><button @click="previewSheetUrl = null" class="text-xs text-ink-soft hover:text-ink">✕</button></div>
+              </div>
+              <div x-show="previewItems.length === 0" class="text-sm text-ink-soft py-3 text-center bg-canvas rounded-lg">✓ Nothing pending today in this sheet.</div>
+              <div x-show="previewItems.length > 0" class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead><tr class="text-[11px] uppercase tracking-wide text-ink-soft"><th class="text-left font-semibold px-3 py-2">Task</th><th class="text-left font-semibold px-3 py-2">Due</th><th class="text-left font-semibold px-3 py-2">Priority</th><th class="text-left font-semibold px-3 py-2">Status</th></tr></thead>
+                  <tbody>
+                    <template x-for="(p, idx) in previewItems" :key="idx">
+                      <tr class="border-t border-line" :class="p.isOverdue ? 'bg-rose-50/50' : ''">
+                        <td class="px-3 py-2 font-semibold"><span x-show="p.isOverdue" class="mr-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-signal-rose text-white">OVERDUE</span><span x-text="p.task"></span></td>
+                        <td class="px-3 py-2 whitespace-nowrap font-mono text-xs" x-text="p.dueDate"></td>
+                        <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold" :class="priorityClass(p.priority)" x-text="p.priority || '—'"></span></td>
+                        <td class="px-3 py-2" x-text="p.status"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+        </template>
+      </div>
+      </template>
+
+      <!-- ================= TASK OVERVIEW TABLE / BOARD (hidden on Employees + Apps tabs) ================= -->
+      <div x-show="activeNav !== 'employees' && activeNav !== 'apps'" x-cloak class="space-y-4">
+
+        <section class="bg-surface rounded-2xl border border-line shadow-card p-4 flex flex-wrap items-center gap-3">
+          <h2 class="text-sm font-bold font-display mr-1 hidden md:block">Task Overview</h2>
+          <div class="flex-1 min-w-[200px] relative">
+            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input x-model.debounce.200ms="search" type="text" placeholder="Search tasks..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:border-copper-400">
+          </div>
+          <select x-show="isAdminLike(currentUser.role) && !selectedPerson" x-model="adminEmployeeFilter" class="px-3 py-2 rounded-lg border border-line text-sm bg-white">
+            <option value="">Employee</option>
+            <template x-for="p in peopleList" :key="p.key"><option :value="p.key" x-text="p.name"></option></template>
+          </select>
+          <div x-show="!isAdminLike(currentUser.role) || selectedPerson" class="px-3 py-2 rounded-lg border border-line text-sm bg-canvas text-ink-soft font-semibold" x-text="isAdminLike(currentUser.role) ? selectedPersonName : currentUser.fullName"></div>
+          <select x-model="statusFilter" class="px-3 py-2 rounded-lg border border-line text-sm bg-white">
+            <option value="">Status</option><option>Pending</option><option>In Progress</option><option>Done</option><option>Revised</option>
+          </select>
+          <select x-model="priorityFilter" class="px-3 py-2 rounded-lg border border-line text-sm bg-white">
+            <option value="">Priority</option><option>High</option><option>Medium</option><option>Low</option>
+          </select>
+          <div class="flex items-center rounded-lg border border-line overflow-hidden ml-auto">
+            <button @click="view='table'" :class="view==='table' ? 'bg-navy text-white' : 'bg-white text-ink-soft'" class="press px-3 py-2 text-xs font-semibold">Table</button>
+            <button @click="view='board'" :class="view==='board' ? 'bg-navy text-white' : 'bg-white text-ink-soft'" class="press px-3 py-2 text-xs font-semibold">Board</button>
+          </div>
+        </section>
+
+        <div x-show="loading" x-transition class="bg-surface rounded-2xl border border-line shadow-card p-5 space-y-3">
+          <template x-for="n in 5" :key="n">
+            <div class="flex items-center gap-4 py-1">
+              <div class="skeleton h-9 w-9 rounded-lg shrink-0"></div>
+              <div class="flex-1 space-y-2"><div class="skeleton h-3 rounded w-2/5"></div><div class="skeleton h-2.5 rounded w-3/5"></div></div>
+              <div class="skeleton h-5 w-16 rounded-full hidden sm:block"></div>
+              <div class="skeleton h-5 w-20 rounded-full hidden md:block"></div>
+            </div>
+          </template>
+        </div>
+
+        <div x-show="!loading && filteredTasks.length === 0" x-cloak class="bg-surface rounded-2xl border border-dashed border-line py-16 flex flex-col items-center gap-3 text-center">
+          <div class="w-12 h-12 rounded-full bg-canvas flex items-center justify-center text-ink-soft">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <p class="text-sm font-semibold">No tasks match this view</p>
+          <p class="text-xs text-ink-soft max-w-xs">Clear a filter, or add the first task.</p>
+          <button x-show="isAdminLike(currentUser.role) && selectedPerson" @click="openAdd()" class="mt-1 text-sm font-semibold text-copper-600 hover:underline">+ Add a task</button>
+        </div>
+
+        <section x-show="!loading && view==='table' && filteredTasks.length" x-cloak x-transition class="bg-surface rounded-2xl border border-line shadow-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[1100px]">
+              <thead>
+                <tr class="bg-canvas text-[11px] uppercase tracking-wide text-ink-soft">
+                  <th class="text-left font-bold px-4 py-3">Task</th>
+                  <th x-show="isAdminLike(currentUser.role) && !selectedPerson" class="text-left font-bold px-4 py-3">Employee</th>
+                  <th class="text-left font-bold px-4 py-3">Assigned to</th>
+                  <th class="text-left font-bold px-4 py-3">Deadline</th>
+                  <th class="text-left font-bold px-4 py-3">Priority</th>
+                  <th class="text-left font-bold px-4 py-3">Status</th>
+                  <th class="text-left font-bold px-4 py-3 w-40">Progress</th>
+                  <th class="text-left font-bold px-4 py-3">Remark</th>
+                  <th class="text-right font-bold px-4 py-3" x-show="isAdminLike(currentUser.role)">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(t, i) in filteredTasks" :key="t.OwnerKey + '-' + t.rowNumber">
+                  <tr class="border-t border-line hover:bg-canvas/60 transition-colors" :class="isOverdue(t) ? 'bg-rose-50/40' : ''">
+                    <td class="px-4 py-3"><div class="font-semibold" x-text="t.TaskName || '(untitled)'"></div><div class="text-xs text-ink-soft max-w-[260px] whitespace-normal break-words" x-text="t.Description"></div></td>
+                    <td x-show="isAdminLike(currentUser.role) && !selectedPerson" class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-navy text-copper-200" x-text="t.Owner"></span></td>
+                    <td class="px-4 py-3" x-text="t.AssignedTo"></td>
+                    <td class="px-4 py-3 whitespace-nowrap font-mono text-xs"><span :class="isOverdue(t) ? 'text-signal-rose font-semibold' : 'text-ink-soft'" x-text="t.Deadline"></span></td>
+                    <td class="px-4 py-3"><span class="badge-pop px-2 py-0.5 rounded-full text-[11px] font-bold" :class="priorityClass(t.Priority)" x-text="t.Priority"></span></td>
+                    <td class="px-4 py-3"><span class="badge-pop px-2 py-0.5 rounded-full text-[11px] font-bold" :class="statusClass(t.Status)" x-text="t.Status"></span></td>
+                    <td class="px-4 py-3"><div class="w-full h-2 rounded-full bg-canvas overflow-hidden"><div class="bar-fill h-full rounded-full bg-copper-500" :style="{width: (t.WorkProgress||0) + '%'}"></div></div><div class="text-[11px] text-ink-soft mt-1 font-mono" x-text="(t.WorkProgress||0) + '%'"></div></td>
+                    <td class="px-4 py-3 max-w-[200px] whitespace-normal break-words text-ink-soft" x-text="t.Remark || '—'"></td>
+                    <td class="px-4 py-3" x-show="isAdminLike(currentUser.role)">
+                      <div class="flex justify-end gap-1.5">
+                        <button @click="openUpdate(t)" class="press w-8 h-8 rounded-lg border border-line hover:bg-canvas flex items-center justify-center" title="Update"><svg class="w-4 h-4 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                        <button @click="confirmDelete(t)" class="press w-8 h-8 rounded-lg border border-line hover:bg-rose-50 hover:border-rose-200 flex items-center justify-center" title="Delete"><svg class="w-4 h-4 text-signal-rose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-4 py-3 border-t border-line text-right">
+            <button @click="activeStatFilter=null; statusFilter=''; priorityFilter=''; adminEmployeeFilter=''; search=''" class="text-xs font-semibold text-copper-600 hover:underline">View All Tasks</button>
+          </div>
+        </section>
+
+        <section x-show="!loading && view==='board' && filteredTasks.length" x-cloak x-transition class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <template x-for="col in ['Pending','In Progress','Done']" :key="col">
+            <div class="bg-canvas/70 rounded-2xl border border-line p-3 kanban-col"
+                 @dragover.prevent="isAdminLike(currentUser.role) && (dragOverCol = col)" @dragleave="dragOverCol = null"
+                 @drop="isAdminLike(currentUser.role) && onDrop(col)" :class="dragOverCol === col ? 'drop-hint' : ''">
+              <div class="flex items-center justify-between px-1 mb-3">
+                <h3 class="text-xs font-bold uppercase tracking-wide text-ink-soft" x-text="col"></h3>
+                <span class="text-xs font-mono font-bold bg-white border border-line rounded-full w-6 h-6 flex items-center justify-center" x-text="filteredTasks.filter(t => (t.Status||'Pending') === col).length"></span>
+              </div>
+              <div class="space-y-2.5">
+                <template x-for="(t, i) in filteredTasks.filter(t => (t.Status||'Pending') === col)" :key="t.OwnerKey + '-' + t.rowNumber">
+                  <div :draggable="isAdminLike(currentUser.role)" @dragstart="isAdminLike(currentUser.role) && (dragTask = t)"
+                       class="lift bg-white rounded-xl border border-line p-3 shadow-sm cursor-grab active:cursor-grabbing" :class="isOverdue(t) ? 'border-rose-200' : ''">
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="text-sm font-semibold leading-snug" x-text="t.TaskName || '(untitled)'"></p>
+                      <span class="badge-pop shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold" :class="priorityClass(t.Priority)" x-text="t.Priority"></span>
+                    </div>
+                    <p x-show="isAdminLike(currentUser.role) && !selectedPerson" class="text-[11px] font-semibold text-copper-600 mt-1" x-text="t.Owner"></p>
+                    <p class="text-xs text-ink-soft mt-1 whitespace-normal break-words" x-text="t.Description"></p>
+                    <div class="flex items-center justify-between mt-2.5"><span class="text-[11px] font-mono" :class="isOverdue(t) ? 'text-signal-rose font-semibold' : 'text-ink-soft'" x-text="t.Deadline"></span></div>
+                    <div class="w-full h-1.5 rounded-full bg-canvas overflow-hidden mt-2"><div class="bar-fill h-full bg-copper-500" :style="{width: (t.WorkProgress||0) + '%'}"></div></div>
+                    <div class="flex justify-end gap-1 mt-2" x-show="isAdminLike(currentUser.role)">
+                      <button @click="openUpdate(t)" class="text-[11px] font-semibold text-copper-600 hover:underline">Edit</button><span class="text-line">·</span>
+                      <button @click="confirmDelete(t)" class="text-[11px] font-semibold text-signal-rose hover:underline">Delete</button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </section>
+      </div>
+
+    </main>
+  </div>
+  </template>
+
+  <!-- ============ MODALS ============ -->
+  <template x-if="loggedIn">
+  <div>
+    <div x-show="addOpen" x-cloak x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(11,14,20,0.55)">
+      <div x-show="addOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+           @click.outside="addOpen=false" class="bg-surface rounded-2xl w-full max-w-lg shadow-pop overflow-hidden">
+        <div class="px-6 py-4 border-b border-line flex items-center justify-between"><h2 class="font-bold text-sm font-display">New task</h2><button @click="addOpen=false" class="text-ink-soft hover:text-ink">✕</button></div>
+        <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div><label class="text-xs font-semibold text-ink-soft">Assign to</label><div class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm bg-canvas text-ink-soft font-semibold" x-text="isAdminLike(currentUser.role) ? selectedPersonName : currentUser.fullName"></div></div>
+          <div><label class="text-xs font-semibold text-ink-soft">Task name *</label><input x-model="form.taskName" type="text" placeholder="e.g. Site inspection" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:border-copper-400"></div>
+          <div><label class="text-xs font-semibold text-ink-soft">Assigned to *</label><input x-model="form.assignedTo" type="text" placeholder="Person's name" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:border-copper-400"></div>
+          <div><label class="text-xs font-semibold text-ink-soft">Description *</label><textarea x-model="form.description" rows="3" placeholder="Details" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:border-copper-400"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-semibold text-ink-soft">Deadline *</label><input x-model="form.deadline" type="date" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:border-copper-400"></div>
+            <div><label class="text-xs font-semibold text-ink-soft">Priority</label><select x-model="form.priority" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-line flex justify-end gap-2">
+          <button @click="addOpen=false" class="px-4 py-2 rounded-lg text-sm font-semibold text-ink-soft hover:bg-canvas">Cancel</button>
+          <button @click="submitAdd()" :disabled="submitting" class="px-4 py-2 rounded-lg bg-copper-500 text-white text-sm font-semibold hover:bg-copper-600 disabled:opacity-50 flex items-center gap-2">
+            <svg x-show="submitting" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg><span x-text="submitting ? 'Adding…' : 'Add task'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="updateOpen" x-cloak x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(11,14,20,0.55)">
+      <div x-show="updateOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+           @click.outside="updateOpen=false" class="bg-surface rounded-2xl w-full max-w-lg shadow-pop overflow-hidden">
+        <div class="px-6 py-4 border-b border-line flex items-center justify-between"><h2 class="font-bold text-sm font-display">Update task</h2><button @click="updateOpen=false" class="text-ink-soft hover:text-ink">✕</button></div>
+        <div class="p-6 space-y-4">
+          <div class="bg-canvas rounded-lg px-3 py-2 text-sm font-semibold" x-text="updateForm.taskName"></div>
+          <div><label class="text-xs font-semibold text-ink-soft">Status</label><select x-model="updateForm.status" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm"><option>Pending</option><option>In Progress</option><option>Done</option><option>Revised</option></select></div>
+          <div><div class="flex justify-between items-center"><label class="text-xs font-semibold text-ink-soft">Progress</label><span class="text-sm font-mono font-bold text-copper-600" x-text="updateForm.progress + '%'"></span></div><input x-model.number="updateForm.progress" type="range" min="0" max="100" class="w-full mt-2 accent-copper-500"></div>
+          <div><label class="text-xs font-semibold text-ink-soft">Remark</label><textarea x-model="updateForm.remark" rows="3" class="mt-1 w-full px-3 py-2 rounded-lg border border-line text-sm focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:border-copper-400"></textarea></div>
+        </div>
+        <div class="px-6 py-4 border-t border-line flex justify-end gap-2">
+          <button @click="updateOpen=false" class="px-4 py-2 rounded-lg text-sm font-semibold text-ink-soft hover:bg-canvas">Cancel</button>
+          <button @click="submitUpdate()" :disabled="submitting" class="px-4 py-2 rounded-lg bg-copper-500 text-white text-sm font-semibold hover:bg-copper-600 disabled:opacity-50 flex items-center gap-2">
+            <svg x-show="submitting" class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg><span x-text="submitting ? 'Saving…' : 'Save changes'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="deleteTarget" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(11,14,20,0.55)">
+      <div x-show="deleteTarget" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+           @click.outside="deleteTarget=null" class="bg-surface rounded-2xl w-full max-w-sm shadow-pop p-6 text-center">
+        <div class="w-12 h-12 rounded-full bg-rose-50 text-signal-rose flex items-center justify-center mx-auto mb-3"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>
+        <p class="text-sm font-semibold">Delete this task?</p>
+        <p class="text-xs text-ink-soft mt-1" x-text="deleteTarget && deleteTarget.TaskName"></p>
+        <div class="flex justify-center gap-2 mt-5">
+          <button @click="deleteTarget=null" class="px-4 py-2 rounded-lg text-sm font-semibold text-ink-soft hover:bg-canvas">Cancel</button>
+          <button @click="submitDelete()" class="px-4 py-2 rounded-lg bg-signal-rose text-white text-sm font-semibold hover:opacity-90">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </template>
+
+  <!-- ============ TEAM CHAT ============ -->
+  <div x-show="loggedIn" x-cloak class="fixed bottom-5 left-5 z-40">
+    <button @click="toggleChat()" class="chat-bubble-btn press w-14 h-14 rounded-full text-white shadow-pop flex items-center justify-center relative">
+      <svg x-show="!chatOpen" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <svg x-show="chatOpen" x-cloak class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <span x-show="unreadChatCount > 0 && !chatOpen" x-cloak class="badge-pop absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 rounded-full bg-signal-rose text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white" x-text="unreadChatCount"></span>
+    </button>
+    <div x-show="chatOpen" x-cloak x-transition @click.outside="chatOpen = false" class="absolute bottom-[68px] left-0 w-[330px] h-[440px] rounded-[22px] shadow-pop border border-line bg-white flex flex-col overflow-hidden">
+      <div class="bg-navy px-4 py-4 text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5"><div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm">💬</div><div><div class="text-sm font-bold font-display leading-tight">Team Chat</div><div class="text-[11px] text-white/70 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> Live</div></div></div>
+        <button @click="chatOpen = false" class="w-7 h-7 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center">✕</button>
+      </div>
+      <div x-ref="chatScroll" class="flex-1 overflow-y-auto px-3.5 py-4 space-y-3 bg-canvas">
+        <div x-show="chatMessages.length === 0" class="flex flex-col items-center justify-center h-full text-center text-ink-soft gap-2"><div class="text-3xl">👋</div><p class="text-xs font-medium">No messages yet</p></div>
+        <template x-for="(m, i) in chatMessages" :key="m.row">
+          <div :class="m.username === currentUser.username ? 'items-end' : 'items-start'" class="flex flex-col chat-msg-in">
+            <div class="flex items-center gap-1.5 mb-1 px-1" :class="m.username === currentUser.username ? 'flex-row-reverse' : ''">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0" :style="{background: avatarColor(m.username)}" x-text="(m.fullName||'?').charAt(0).toUpperCase()"></div>
+              <div class="text-[10px] text-ink-soft" x-text="(m.username === currentUser.username ? 'You' : m.fullName) + ' · ' + m.timestamp"></div>
+            </div>
+            <div class="max-w-[78%] px-3.5 py-2.5 text-sm break-words shadow-sm" :class="[m.username === currentUser.username ? 'chat-bubble-mine' : 'chat-bubble-theirs', m.pending ? 'opacity-55' : '']" x-text="m.message"></div>
+          </div>
+        </template>
+      </div>
+      <div class="p-3 border-t border-line flex items-center gap-2 shrink-0 bg-white">
+        <input x-model="chatInput" @keydown.enter="sendChat()" type="text" placeholder="Message the team…" class="flex-1 px-3.5 py-2.5 rounded-full border border-line text-sm bg-canvas focus:outline-none focus:ring-2 focus:ring-copper-400/40 focus:bg-white">
+        <button @click="sendChat()" :disabled="!chatInput.trim() || chatSending" class="press w-10 h-10 rounded-full text-white flex items-center justify-center disabled:opacity-30 shrink-0" style="background:linear-gradient(135deg,#ff8a2b,#d9640a);">
+          <svg class="w-4 h-4 -ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="fixed bottom-5 right-5 z-50 space-y-2 w-72">
+    <template x-for="toast in toasts" :key="toast.id">
+      <div x-show="true" x-transition class="px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white flex items-center gap-2" :class="toast.type === 'error' ? 'bg-signal-rose' : 'bg-navy'"><span x-text="toast.message"></span></div>
+    </template>
+  </div>
+
+<script>
+function app() {
+  return {
+    loggedIn: false,
+    loggingIn: false,
+    loginError: '',
+    loginForm: { username: '', password: '' },
+    currentUser: { token: '', username: '', role: '', personKey: null, fullName: '' },
+
+    activeNav: 'dashboard',
+    performanceRange: 'all',
+    todayLabel: new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }),
+
+    peopleList: [],
+    peopleLoading: false,
+    showEmployeePicker: false,
+    allTasksDebugLoading: false,
+    allTasksDebugOutput: '',
+
+    chatOpen: false,
+    chatMessages: [],
+    chatInput: '',
+    chatSending: false,
+    chatLastRow: 0,
+    unreadChatCount: 0,
+    chatPollHandle: null,
+
+    // ---- notifications (in-portal bell + browser popups) ----
+    notifOpen: false,
+    notifications: [],
+    notifLoading: false,
+    unreadNotifCount: 0,
+    bellAnimating: false,
+    notifPollHandle: null,
+    dueSoonPollHandle: null,
+    seenNotifIds: new Set(),   // ids we've already shown a browser popup for, this session
+    firstNotifPollDone: false, // suppress popups for pre-existing notifications on the very first poll after login
+    showNotifBanner: false,    // "enable browser notifications" banner
+
+    selectedPerson: null,
+    selectedPersonName: '',
+    drillLoading: false,
+    allTasks: [],
+    allEmployeesTasks: [],
+    adminEmployeeFilter: '',
+    loading: false,
+    submitting: false,
+    view: 'table',
+    search: '',
+    statusFilter: '',
+    priorityFilter: '',
+    activeStatFilter: null,
+    loadToken: 0,
+    dragTask: null,
+    dragOverCol: null,
+
+    addOpen: false,
+    updateOpen: false,
+    deleteTarget: null,
+    toasts: [],
+
+    form: { taskName: '', assignedTo: '', description: '', deadline: '', priority: 'Medium' },
+    updateForm: { personKey: '', rowNumber: null, taskName: '', status: 'Pending', progress: 0, remark: '' },
+
+    pendingWork: [],
+    pendingLoading: false,
+    mySheets: [],
+    previewSheetUrl: null,
+    previewSheetLabel: '',
+    debugOutput: '',
+
+    // ---- Apps tab (Admin/Manager only — links to other Apps Script tools) ----
+    apps: [],
+    appsLoading: false,
+
+    init() {},
+
+    isAdminLike(role) {
+      return role === 'Admin' || role === 'Manager';
+    },
+
+    // ================= BROWSER NOTIFICATIONS =================
+    // Must be triggered by a direct user click (e.g. the Login button,
+    // or the "Enable" button on the banner) — browsers silently refuse
+    // to show the permission prompt if it's fired from a timer/async
+    // callback instead of a real click.
+    requestBrowserNotificationPermission() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(() => {
+          this.showNotifBanner = (Notification.permission === 'default');
+        });
+      } else {
+        this.showNotifBanner = false;
+      }
+    },
+
+    // Shows a real OS-level popup for one notification. Clicking it
+    // focuses the tab and opens the bell dropdown.
+    fireBrowserNotification(n) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        const popup = new Notification(n.title || 'Task Manager', {
+          body: n.message || '',
+          tag: 'taskmgr-' + n.id, // same tag replaces instead of stacking duplicates
+          icon: undefined
+        });
+        popup.onclick = () => {
+          window.focus();
+          this.notifOpen = true;
+          popup.close();
+        };
+        // Auto-dismiss after 10s so they don't pile up on the desktop.
+        setTimeout(() => popup.close(), 10000);
+      } catch (e) {
+        // Some platforms (e.g. iOS Safari web apps) throw on `new Notification`
+        // even when permission looks granted — never let that break polling.
+        console.warn('Browser notification failed:', e);
+      }
+    },
+
+    doLogin() {
+      if (this.loggingIn) return;
+      if (!this.loginForm.username.trim() || !this.loginForm.password.trim()) {
+        this.loginError = 'Please enter both username and password.';
+        return;
+      }
+
+      // Ask for browser-notification permission right here, inside the
+      // click handler — this is the one moment guaranteed to be a real
+      // user gesture, which is required for browsers to show the prompt.
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+
+      this.loggingIn = true;
+      this.loginError = '';
+      google.script.run
+        .withSuccessHandler((result) => {
+          this.loggingIn = false;
+          if (!result.success) {
+            this.loginError = result.message;
+            return;
+          }
+          this.currentUser = {
+            token: result.token, username: result.username, role: result.role,
+            personKey: result.personKey, fullName: result.fullName
+          };
+          this.loggedIn = true;
+
+          // If they haven't granted permission yet (didn't click "Allow"
+          // on the prompt above, or it hasn't resolved), show a banner
+          // they can use to try again whenever they're ready.
+          this.showNotifBanner = ('Notification' in window && Notification.permission === 'default');
+
+          this.startChatPolling();
+          this.startNotifPolling();
+          this.startDueSoonPolling();
+
+          if (this.isAdminLike(result.role)) {
+            this.selectedPerson = null;
+            this.loadPeople();
+            this.loadAllEmployeesTasks();
+          } else {
+            this.loadPendingWork();
+            this.loadMySheets();
+            this.loadTasks();
+          }
+        })
+        .withFailureHandler((err) => {
+          this.loggingIn = false;
+          this.loginError = 'Login failed: ' + (err && err.message ? err.message : err);
+        })
+        .loginUser(this.loginForm.username, this.loginForm.password);
+    },
+
+    logout() {
+      this.stopChatPolling();
+      this.stopNotifPolling();
+      this.stopDueSoonPolling();
+      this.loggedIn = false;
+      this.currentUser = { token: '', username: '', role: '', personKey: null, fullName: '' };
+      this.loginForm = { username: '', password: '' };
+      this.allTasks = [];
+      this.allEmployeesTasks = [];
+      this.adminEmployeeFilter = '';
+      this.peopleList = [];
+      this.pendingWork = [];
+      this.mySheets = [];
+      this.previewSheetUrl = null;
+      this.selectedPerson = null;
+      this.chatMessages = [];
+      this.chatLastRow = 0;
+      this.unreadChatCount = 0;
+      this.chatOpen = false;
+      this.notifications = [];
+      this.seenNotifIds = new Set();
+      this.firstNotifPollDone = false;
+      this.unreadNotifCount = 0;
+      this.notifOpen = false;
+      this.showNotifBanner = false;
+      this.activeNav = 'dashboard';
+    },
+
+    loadPeople() {
+      this.peopleLoading = true;
+      google.script.run
+        .withSuccessHandler(list => { this.peopleList = list || []; this.peopleLoading = false; })
+        .withFailureHandler(err => { this.peopleLoading = false; this.notify('Could not load employee list: ' + (err.message || err), 'error'); })
+        .getPeopleList(this.currentUser.token);
+    },
+
+    selectPerson(p) {
+      this.selectedPerson = p.key;
+      this.selectedPersonName = p.name;
+      this.drillLoading = true;
+      this.allTasks = [];
+      this.mySheets = [];
+      this.pendingWork = [];
+      this.previewSheetUrl = null;
+      this.search = ''; this.statusFilter = ''; this.priorityFilter = ''; this.activeStatFilter = null;
+
+      google.script.run
+        .withSuccessHandler(data => {
+          this.drillLoading = false;
+          this.allTasks = data.tasks || [];
+          this.mySheets = data.personalSheets || [];
+          this.pendingWork = data.pendingWork || [];
+        })
+        .withFailureHandler(err => {
+          this.drillLoading = false;
+          this.notify('Could not load employee data: ' + (err.message || err), 'error');
+        })
+        .getEmployeeFullData(this.currentUser.token, p.key);
+    },
+
+    backToPeople() {
+      this.selectedPerson = null;
+      this.selectedPersonName = '';
+      this.allTasks = [];
+      this.mySheets = [];
+      this.pendingWork = [];
+      this.previewSheetUrl = null;
+      this.loadAllEmployeesTasks();
+    },
+
+    loadTasks() {
+      this.loading = true;
+      const token = ++this.loadToken;
+      const onSuccess = (tasks) => {
+        if (token !== this.loadToken) return;
+        this.allTasks = tasks || [];
+        this.loading = false;
+      };
+      const onFailure = (err) => {
+        if (token !== this.loadToken) return;
+        this.loading = false;
+        this.notify('Could not load tasks: ' + (err.message || err), 'error');
+      };
+      if (this.isAdminLike(this.currentUser.role)) {
+        if (!this.selectedPerson) { this.loading = false; return; }
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).getTasksByPerson(this.currentUser.token, this.selectedPerson);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).getTasksByPerson(this.currentUser.token, this.currentUser.personKey);
+      }
+    },
+
+    loadAllEmployeesTasks(forceRefresh) {
+      this.loading = true;
+      const token = ++this.loadToken;
+
+      const timeoutId = setTimeout(() => {
+        if (token !== this.loadToken) return;
+        this.loading = false;
+        this.notify('Loading timed out. Check Apps Script Executions log for errors.', 'error');
+      }, 55000);
+
+      google.script.run
+        .withSuccessHandler(tasks => {
+          clearTimeout(timeoutId);
+          if (token !== this.loadToken) return;
+          this.allEmployeesTasks = tasks || [];
+          this.loading = false;
+          if (this.allEmployeesTasks.length === 0) {
+            this.notify('Combined view returned 0 tasks.', 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          clearTimeout(timeoutId);
+          if (token !== this.loadToken) return;
+          this.loading = false;
+          this.notify('Could not load all tasks: ' + (err.message || err), 'error');
+        })
+        .getAllTasks(this.currentUser.token, !!forceRefresh);
+    },
+
+    refreshCurrentView() {
+      if (this.isAdminLike(this.currentUser.role)) {
+        if (this.selectedPerson) {
+          this.loadTasks();
+          this.loadPendingWork();
+        } else {
+          this.loadAllEmployeesTasks(true);
+        }
+      } else {
+        this.loadTasks();
+        this.loadPendingWork();
+      }
+    },
+
+    loadPendingWork() {
+      this.pendingLoading = true;
+      google.script.run
+        .withSuccessHandler(items => { this.pendingWork = items || []; this.pendingLoading = false; })
+        .withFailureHandler(err => {
+          this.pendingLoading = false;
+          this.notify('Could not scan sheets: ' + (err.message || err), 'error');
+        })
+        .getTodayPendingWork(this.currentUser.token);
+    },
+
+    loadMySheets() {
+      google.script.run
+        .withSuccessHandler(links => { this.mySheets = links || []; })
+        .withFailureHandler(err => this.notify('Could not load your sheets: ' + (err.message || err), 'error'))
+        .getUserSheets(this.currentUser.token);
+    },
+
+    // Admin/Manager only — reads the "Apps" tab in the central sheet
+    // (Name | URL | Description | Icon) and lists them as link cards.
+    loadApps() {
+      if (!this.isAdminLike(this.currentUser.role)) return;
+      this.appsLoading = this.apps.length === 0;
+      google.script.run
+        .withSuccessHandler(list => { this.apps = list || []; this.appsLoading = false; })
+        .withFailureHandler(err => {
+          this.appsLoading = false;
+          this.notify('Could not load apps: ' + (err.message || err), 'error');
+        })
+        .getApps(this.currentUser.token);
+    },
+
+    toggleSheetPreview(s) {
+      if (this.previewSheetUrl === s.url) {
+        this.previewSheetUrl = null;
+      } else {
+        this.previewSheetUrl = s.url;
+        this.previewSheetLabel = s.label;
+      }
+    },
+
+    get previewItems() {
+      if (!this.previewSheetUrl) return [];
+      return this.pendingWork.filter(p => p.sheetUrl === this.previewSheetUrl);
+    },
+
+    runDebugScan() {
+      this.debugOutput = 'Running scan diagnostics…';
+      google.script.run
+        .withSuccessHandler(report => { this.debugOutput = JSON.stringify(report, null, 2); })
+        .withFailureHandler(err => { this.debugOutput = 'Debug scan failed: ' + (err.message || err); })
+        .debugPendingScan(this.currentUser.token);
+    },
+
+    runAllTasksDebug() {
+      this.allTasksDebugLoading = true;
+      this.allTasksDebugOutput = '';
+      google.script.run
+        .withSuccessHandler(report => {
+          this.allTasksDebugLoading = false;
+          this.allTasksDebugOutput = JSON.stringify(report, null, 2);
+        })
+        .withFailureHandler(err => {
+          this.allTasksDebugLoading = false;
+          this.allTasksDebugOutput = 'Debug failed: ' + (err.message || err);
+        })
+        .debugAllTasksReport(this.currentUser.token);
+    },
+
+    // ================= IN-PORTAL + BROWSER NOTIFICATION POLLING =================
+    // Employees get their own task-assigned/due-soon alerts.
+    // Admin/Manager get a broadcast feed covering EVERY employee's
+    // task-assigned/due-soon alerts (see Code.gs ADMIN_BROADCAST_KEY).
+    startNotifPolling() {
+      this.pollNotifications();
+      if (this.notifPollHandle) clearInterval(this.notifPollHandle);
+      this.notifPollHandle = setInterval(() => this.pollNotifications(), 15000);
+    },
+    stopNotifPolling() {
+      if (this.notifPollHandle) { clearInterval(this.notifPollHandle); this.notifPollHandle = null; }
+    },
+    pollNotifications() {
+      if (!this.currentUser.token) return;
+      google.script.run
+        .withSuccessHandler(result => {
+          const list = (result && result.notifications) || [];
+
+          // Fire a real browser popup for any notification we haven't
+          // already shown this session. Skipped on the very first poll
+          // right after login, so opening the app doesn't replay every
+          // old notification as a fresh popup.
+          if (this.firstNotifPollDone) {
+            list.forEach(n => {
+              if (this.seenNotifIds.has(n.id)) return;
+              this.seenNotifIds.add(n.id);
+              if (!n.read) this.fireBrowserNotification(n);
+            });
+          } else {
+            list.forEach(n => this.seenNotifIds.add(n.id));
+          }
+
+          const hadNewer = this.firstNotifPollDone && list.some(n => !this.notifications.some(old => old.id === n.id));
+          this.notifications = list;
+          this.unreadNotifCount = list.filter(n => !n.read).length;
+          if (hadNewer) {
+            this.bellAnimating = true;
+            setTimeout(() => { this.bellAnimating = false; }, 650);
+          }
+          this.firstNotifPollDone = true;
+        })
+        .withFailureHandler(() => {})
+        .getMyNotifications(this.currentUser.token);
+    },
+    toggleNotifications() {
+      this.notifOpen = !this.notifOpen;
+      if (this.notifOpen) {
+        this.notifLoading = this.notifications.length === 0;
+        this.pollNotifications();
+      }
+    },
+    markAllNotificationsRead() {
+      const ids = this.notifications.filter(n => !n.read).map(n => n.id);
+      if (!ids.length) return;
+      this.notifications.forEach(n => n.read = true);
+      this.unreadNotifCount = 0;
+      google.script.run
+        .withFailureHandler(err => this.notify('Could not update notifications: ' + (err.message || err), 'error'))
+        .markNotificationsRead(this.currentUser.token, ids);
+    },
+    openNotification(n) {
+      if (!n.read) {
+        n.read = true;
+        this.unreadNotifCount = Math.max(0, this.unreadNotifCount - 1);
+        google.script.run
+          .withFailureHandler(() => {})
+          .markNotificationsRead(this.currentUser.token, [n.id]);
+      }
+    },
+
+    // ================= DUE-TODAY / DUE-TOMORROW SERVER SCAN =================
+    // Employees: checks their own tasks. Admin/Manager: checks EVERY
+    // employee's tasks. Runs on login, then every 5 minutes — the
+    // server itself dedupes so this never re-fires the same alert
+    // within a 20-hour window (see Code.gs checkDueSoonAndNotify).
+    startDueSoonPolling() {
+      this.runDueSoonCheck();
+      if (this.dueSoonPollHandle) clearInterval(this.dueSoonPollHandle);
+      this.dueSoonPollHandle = setInterval(() => this.runDueSoonCheck(), 5 * 60 * 1000);
+    },
+    stopDueSoonPolling() {
+      if (this.dueSoonPollHandle) { clearInterval(this.dueSoonPollHandle); this.dueSoonPollHandle = null; }
+    },
+    runDueSoonCheck() {
+      if (!this.currentUser.token) return;
+      google.script.run
+        .withSuccessHandler(() => this.pollNotifications()) // pick up anything it just wrote, right away
+        .withFailureHandler(() => {})
+        .checkDueSoonAndNotify(this.currentUser.token);
+    },
+
+    avatarColor(username) {
+      const palette = ['#ff8a2b', '#0e9f8e', '#b34f08', '#8890a0', '#c2700f', '#d9640a', '#e0384c', '#3d7a6f'];
+      const str = (username || '?').toString();
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      return palette[Math.abs(hash) % palette.length];
+    },
+
+    toggleChat() {
+      this.chatOpen = !this.chatOpen;
+      if (this.chatOpen) {
+        this.unreadChatCount = 0;
+        this.$nextTick(() => this.scrollChatToBottom());
+      }
+      this.restartChatPollTimer();
+    },
+
+    scrollChatToBottom() {
+      const el = this.$refs.chatScroll;
+      if (el) el.scrollTop = el.scrollHeight;
+    },
+
+    startChatPolling() {
+      this.pollChat();
+      this.restartChatPollTimer();
+    },
+
+    restartChatPollTimer() {
+      if (this.chatPollHandle) clearInterval(this.chatPollHandle);
+      const interval = this.chatOpen ? 2000 : 10000;
+      this.chatPollHandle = setInterval(() => this.pollChat(), interval);
+    },
+
+    stopChatPolling() {
+      if (this.chatPollHandle) { clearInterval(this.chatPollHandle); this.chatPollHandle = null; }
+    },
+
+    pollChat() {
+      if (!this.currentUser.token) return;
+      google.script.run
+        .withSuccessHandler(result => {
+          const incoming = (result && result.messages) || [];
+          if (incoming.length > 0) {
+            incoming.forEach(real => {
+              const dupeIdx = this.chatMessages.findIndex(m =>
+                m.pending && m.username === real.username && m.message === real.message);
+              if (dupeIdx !== -1) this.chatMessages.splice(dupeIdx, 1);
+            });
+            this.chatMessages = this.chatMessages.concat(incoming);
+            this.chatLastRow = result.lastRow;
+            const fromOthers = incoming.filter(m => m.username !== this.currentUser.username).length;
+            if (!this.chatOpen && fromOthers > 0) this.unreadChatCount += fromOthers;
+            this.$nextTick(() => { if (this.chatOpen) this.scrollChatToBottom(); });
+          }
+        })
+        .withFailureHandler(() => {})
+        .getChatMessages(this.currentUser.token, this.chatLastRow);
+    },
+
+    sendChat() {
+      const msg = this.chatInput.trim();
+      if (!msg || this.chatSending) return;
+      this.chatInput = '';
+
+      this.chatMessages.push({
+        row: 'pending_' + Date.now(),
+        timestamp: 'Sending…',
+        timestampRaw: Date.now(),
+        username: this.currentUser.username,
+        fullName: this.currentUser.fullName,
+        message: msg,
+        pending: true
+      });
+      this.$nextTick(() => this.scrollChatToBottom());
+
+      this.chatSending = true;
+      google.script.run
+        .withSuccessHandler(() => {
+          this.chatSending = false;
+          this.pollChat();
+        })
+        .withFailureHandler(err => {
+          this.chatSending = false;
+          const idx = this.chatMessages.findIndex(m => m.pending && m.message === msg);
+          if (idx !== -1) this.chatMessages.splice(idx, 1);
+          this.chatInput = msg;
+          this.notify('Message failed: ' + (err.message || err), 'error');
+        })
+        .sendChatMessage(this.currentUser.token, msg);
+    },
+
+    get filteredTasks() {
+      const q = this.search.trim().toLowerCase();
+
+      const source = (this.isAdminLike(this.currentUser.role) && !this.selectedPerson)
+        ? this.allEmployeesTasks
+        : this.allTasks;
+
+      return source.filter(t => {
+        if (this.isAdminLike(this.currentUser.role) && !this.selectedPerson && this.adminEmployeeFilter && t.OwnerKey !== this.adminEmployeeFilter) return false;
+        if (this.statusFilter && t.Status !== this.statusFilter) return false;
+        if (this.priorityFilter && t.Priority !== this.priorityFilter) return false;
+        if (this.activeStatFilter === 'overdue' && !this.isOverdue(t)) return false;
+        if (this.activeStatFilter && this.activeStatFilter !== 'overdue' && (t.Status || 'Pending') !== this.activeStatFilter) return false;
+        if (q && !((t.TaskName||'').toLowerCase().includes(q) || (t.AssignedTo||'').toLowerCase().includes(q))) return false;
+        return true;
+      });
+    },
+
+    get statCards() {
+      const all = (this.isAdminLike(this.currentUser.role) && !this.selectedPerson) ? this.allEmployeesTasks : this.allTasks;
+      const count = (s) => all.filter(t => (t.Status || 'Pending') === s).length;
+      const overdue = all.filter(t => this.isOverdue(t)).length;
+      return [
+        { label: 'Total tasks', value: all.length, dot: '#12161f', filterValue: null },
+        { label: 'Pending', value: count('Pending'), dot: '#c2700f', filterValue: 'Pending' },
+        { label: 'In progress', value: count('In Progress'), dot: '#0e9f8e', filterValue: 'In Progress' },
+        { label: 'Done', value: count('Done'), dot: '#8890a0', filterValue: 'Done' },
+        { label: 'Overdue', value: overdue, dot: '#e0384c', filterValue: 'overdue' },
+      ];
+    },
+
+    get kpiCards() {
+      const base = this.statCards;
+      const total = base[0].value || 0;
+      const pct = (n) => total > 0 ? Math.round((n / total) * 100) : 0;
+      const icons = {
+        'Total tasks': '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+        'Pending': '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        'In progress': '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>',
+        'Done': '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+        'Overdue': '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'
+      };
+      const colors = {
+        'Total tasks': { bg: '#fff4ec', fg: '#d9640a' },
+        'Pending':     { bg: '#fff7ed', fg: '#c2700f' },
+        'In progress': { bg: '#ecfdf7', fg: '#0e9f8e' },
+        'Done':        { bg: '#f3f4f6', fg: '#4b5563' },
+        'Overdue':     { bg: '#fef2f3', fg: '#e0384c' }
+      };
+      const subs = {
+        'Total tasks': total + ' tasks tracked',
+        'Pending': base[1].value + ' awaiting action',
+        'In progress': base[2].value + ' active',
+        'Done': pct(base[3].value) + '% done',
+        'Overdue': base[4].value > 0 ? base[4].value + ' need attention' : 'No overdue tasks'
+      };
+      return base.map(s => ({
+        ...s,
+        icon: icons[s.label] || icons['Total tasks'],
+        bg: (colors[s.label] || colors['Total tasks']).bg,
+        fg: (colors[s.label] || colors['Total tasks']).fg,
+        sub: subs[s.label] || ''
+      }));
+    },
+
+    get employeePerformance() {
+      const source = this.allEmployeesTasks.length ? this.allEmployeesTasks : this.allTasks;
+      if (!source.length || !this.peopleList.length) return [];
+      return this.peopleList.map(p => {
+        const mine = source.filter(t => t.OwnerKey === p.key);
+        const total = mine.length;
+        const done = mine.filter(t => (t.Status || 'Pending') === 'Done').length;
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { key: p.key, name: p.name, total: total, done: done, pct: pct };
+      }).sort((a, b) => b.pct - a.pct);
+    },
+
+    get donutTotal() {
+      return this.statCards[0].value || 0;
+    },
+    get donutSegments() {
+      const base = this.statCards;
+      const total = base[0].value || 0;
+      const circumference = 2 * Math.PI * 50;
+      const parts = [
+        { label: 'Done', count: base[3].value, color: '#0e9f8e' },
+        { label: 'Pending', count: base[1].value, color: '#f5760f' },
+        { label: 'In Progress', count: base[2].value, color: '#4b5563' },
+        { label: 'Overdue', count: base[4].value, color: '#e0384c' }
+      ];
+      let offsetAcc = 0;
+      return parts.map(p => {
+        const pct = total > 0 ? Math.round((p.count / total) * 100) : 0;
+        const dash = total > 0 ? (p.count / total) * circumference : 0;
+        const seg = { ...p, pct: pct, dash: dash, offset: offsetAcc };
+        offsetAcc += dash;
+        return seg;
+      });
+    },
+
+    taskCountFor(personKey) {
+      const source = this.allEmployeesTasks.length ? this.allEmployeesTasks : this.allTasks;
+      return source.filter(t => t.OwnerKey === personKey).length;
+    },
+
+    toggleStatFilter(v) {
+      this.activeStatFilter = (this.activeStatFilter === v) ? null : v;
+    },
+
+    isOverdue(t) {
+      if (!t.Deadline || t.Status === 'Done') return false;
+      const parts = String(t.Deadline).split('/');
+      if (parts.length < 3) return false;
+      const d = new Date(parts[2], parts[1] - 1, parts[0]);
+      const today = new Date(); today.setHours(0,0,0,0);
+      return d < today;
+    },
+
+    priorityClass(p) {
+      return { High: 'bg-rose-50 text-signal-rose', Medium: 'bg-copper-50 text-copper-600', Low: 'bg-signal-teal/10 text-signal-teal' }[p] || 'bg-canvas text-ink-soft';
+    },
+    statusClass(s) {
+      return {
+        'Pending': 'bg-copper-50 text-copper-600',
+        'In Progress': 'bg-signal-teal/10 text-signal-teal',
+        'Done': 'bg-canvas text-ink-soft',
+        'Revised': 'bg-rose-50 text-signal-rose',
+      }[s] || 'bg-canvas text-ink-soft';
+    },
+
+    openAdd() {
+      this.form = { taskName: '', assignedTo: '', description: '', deadline: '', priority: 'Medium' };
+      this.addOpen = true;
+    },
+    submitAdd() {
+      if (this.submitting) return;
+      const f = this.form;
+      const personKey = this.isAdminLike(this.currentUser.role) ? this.selectedPerson : this.currentUser.personKey;
+      if (!personKey || !f.taskName.trim() || !f.assignedTo.trim() || !f.description.trim() || !f.deadline) {
+        this.notify('Fill in every required field first.', 'error'); return;
+      }
+      this.submitting = true;
+      google.script.run
+        .withSuccessHandler(res => {
+          this.submitting = false; this.addOpen = false;
+          this.notify(res.message || 'Task added.', 'success');
+          this.loadTasks();
+          this.pollNotifications(); // pick up the broadcast/employee notification right away
+        })
+        .withFailureHandler(err => {
+          this.submitting = false;
+          this.notify('Could not add task: ' + (err.message || err), 'error');
+        })
+        .addTaskToPerson(this.currentUser.token, personKey, {
+          taskName: f.taskName.trim(), assignedTo: f.assignedTo.trim(),
+          description: f.description.trim(), deadline: f.deadline, priority: f.priority
+        });
+    },
+
+    openUpdate(t) {
+      this.updateForm = {
+        personKey: t.OwnerKey, rowNumber: t.rowNumber, taskName: t.TaskName,
+        status: t.Status || 'Pending', progress: t.WorkProgress || 0, remark: t.Remark || ''
+      };
+      this.updateOpen = true;
+    },
+    submitUpdate() {
+      if (this.submitting) return;
+      const f = this.updateForm;
+      this.submitting = true;
+      google.script.run
+        .withSuccessHandler(() => {
+          this.submitting = false; this.updateOpen = false;
+          this.notify('Task updated.', 'success');
+          this.refreshCurrentView();
+        })
+        .withFailureHandler(err => {
+          this.submitting = false;
+          this.notify('Update failed: ' + (err.message || err), 'error');
+        })
+        .updateTask(this.currentUser.token, f.personKey, f.rowNumber, { status: f.status, workProgress: f.progress, remark: f.remark });
+    },
+
+    onDrop(newStatus) {
+      const t = this.dragTask;
+      this.dragOverCol = null;
+      if (!t || (t.Status || 'Pending') === newStatus) return;
+      google.script.run
+        .withSuccessHandler(() => { this.notify('Moved to ' + newStatus + '.', 'success'); this.refreshCurrentView(); })
+        .withFailureHandler(err => this.notify('Could not move task: ' + (err.message || err), 'error'))
+        .updateTask(this.currentUser.token, t.OwnerKey, t.rowNumber, { status: newStatus });
+    },
+
+    confirmDelete(t) { this.deleteTarget = t; },
+    submitDelete() {
+      const t = this.deleteTarget;
+      this.deleteTarget = null;
+      google.script.run
+        .withSuccessHandler(() => { this.notify('Task deleted.', 'success'); this.refreshCurrentView(); })
+        .withFailureHandler(err => this.notify('Delete failed: ' + (err.message || err), 'error'))
+        .deleteTask(this.currentUser.token, t.OwnerKey, t.rowNumber);
+    },
+
+    notify(message, type) {
+      const id = Date.now() + Math.random();
+      this.toasts.push({ id, message, type });
+      setTimeout(() => { this.toasts = this.toasts.filter(x => x.id !== id); }, 3200);
+    },
+  }
+}
+</script>
+</body>
+</html>

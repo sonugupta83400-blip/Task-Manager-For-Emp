@@ -1,3 +1,115 @@
+/**********************************************************************
+ *  EMPLOYEE TASK MANAGEMENT SYSTEM — Full Merge
+ *  --------------------------------------------------------------
+ *  Combines:
+ *   1) Real login via a "Users" tab in a central Google Sheet
+ *   2) A polished task dashboard (table/board/chart, add/update/delete)
+ *      backed by each employee's OWN task spreadsheet (SHEETS_CONFIG)
+ *   3) "My Sheets" + automatic "Pending & Overdue Work" scanning across
+ *      any other personal sheets an employee has (Checklist, FMS,
+ *      Sales Report, etc) via a "SheetLinks" tab
+ *   4) Admin view: pick an employee from a list, then drill into
+ *      that employee's tasks + personal sheets only
+ *   5) In-portal + BROWSER notifications: whenever an Admin assigns a
+ *      task, the responsible employee sees a bell-icon notification
+ *      AND a real OS-level browser popup the next time they poll —
+ *      Admin/Manager accounts ALSO get a broadcast notification (and
+ *      browser popup) for every task assigned to ANY employee, so
+ *      they don't have to babysit each employee's sheet.
+ *   6) Due-soon reminders: any task due TODAY or TOMORROW fires an
+ *      in-portal + browser notification. Employees get this for their
+ *      own tasks; Admin/Manager get it for EVERY employee's tasks.
+ *
+ *  ===================== NEW IN THIS VERSION =====================
+ *  BROWSER NOTIFICATIONS FOR ADMIN/MANAGER (all-employee visibility)
+ *  ------------------------------------------------------------------
+ *  Previously the "Notifications" tab only ever stored rows keyed by
+ *  an employee's personKey, and getMyNotifications()/markNotificationsRead()
+ *  only had a code path for a logged-in employee (session.personKey).
+ *  Admin/Manager accounts have NO personKey of their own, so they
+ *  always got back an empty notification list — even though they're
+ *  the ones assigning tasks and most need the "due soon" alerts.
+ *
+ *  Fix: added ADMIN_BROADCAST_KEY, a synthetic PersonKey value used
+ *  ONLY for notifications meant for every Admin/Manager account (never
+ *  a real employee — SHEETS_CONFIG never has a key matching it, so it
+ *  can't collide). Every place that creates or reads notifications now
+ *  branches on isAdminRole_(session.role):
+ *    - addTaskToPerson() now ALSO writes a broadcast row (in addition
+ *      to the existing employee-scoped row) whenever a task is assigned.
+ *    - checkDueSoonAndNotify() now, for Admin/Manager, loops every
+ *      person in SHEETS_CONFIG and writes a broadcast row for each
+ *      task due today/tomorrow (prefixed with the employee's name so
+ *      it's clear whose task it is) — for a regular employee, behavior
+ *      is unchanged (their own tasks only).
+ *    - getMyNotifications() / markNotificationsRead() now read/write
+ *      the ADMIN_BROADCAST_KEY scope for Admin/Manager instead of
+ *      always returning empty.
+ *
+ *  Note: because the broadcast feed is ONE shared set of rows, marking
+ *  a broadcast notification "read" as one Admin marks it read for every
+ *  Admin/Manager account (there's no per-admin-account row). That's
+ *  intentional for a small team; say the word if you'd rather each
+ *  admin account track its own read/unread state and I'll split it out
+ *  by username instead of by role.
+ *
+ *  The client (Index.html) now also requests OS notification permission
+ *  on login and fires a real `new Notification(...)` browser popup for
+ *  every notification it hasn't already shown, in addition to the
+ *  existing in-portal bell icon.
+ *
+ *  ===================== PREVIOUS FIXES (kept) =====================
+ *  1) SHEETS_CONFIG['person5'] (Harish) had gone blank — restored.
+ *  2) getAllTasks() no longer caches a PARTIAL result; retries increased
+ *     from 3 to 5; rebuild lock wait increased from 10s to 20s.
+ *  3) getEmployeeFullData() no longer lets a failure reading an
+ *     employee's OWN task sheet block their personal sheets from
+ *     loading; response is round-tripped through sanitizeForClient_().
+ *  4) Gmail/MailApp sending requires one-time authorization — see setup
+ *     step G below.
+ *  5) isAdminRole_() treats both "Admin" and "Manager" as elevated
+ *     roles with full permissions everywhere in this file.
+ *
+ *  ===================== PERMISSIONS =====================
+ *  Employees are VIEW-ONLY: they can see their own tasks, but cannot
+ *  add, edit, or delete tasks. Admin AND Manager accounts can add/update/
+ *  delete, and can see every employee's combined tasks, sheets, AND
+ *  notifications (task-assigned + due-soon) across the whole team.
+ *
+ *  ===================== SETUP =====================
+ *  A) Create ONE central Google Sheet with tabs: "Users", "SheetLinks",
+ *     and "Notifications" (separate from each employee's own task
+ *     spreadsheet). "Notifications" is auto-created on first use.
+ *
+ *  "Users" tab columns (Row 1 = headers):
+ *     A: Username | B: Password | C: FullName | D: Role | E: PersonKey | F: Email
+ *
+ *  "SheetLinks" tab columns (Row 1 = headers) — OPTIONAL:
+ *     A: Username | B: SheetLabel | C: SheetURL | D: TabName(optional)
+ *
+ *  B) Update SHEET_ID below with this central sheet's ID
+ *  C) SHEETS_CONFIG below already has each employee's task spreadsheet
+ *  D) Extensions > Apps Script, paste this as Code.gs; paste Index.html
+ *     (name it exactly "Index" in Apps Script) as the other file
+ *  E) Deploy > New deployment > Web app
+ *       - Execute as: Me
+ *       - Who has access: Anyone (or "Anyone within org")
+ *  F) The Admin's Google account must have Editor access to every
+ *     spreadsheet in SHEETS_CONFIG and Viewer access to every sheet
+ *     listed in SheetLinks.
+ *  G) One-time step to enable daily reminder emails AND authorize
+ *     Gmail sending in general: run "createDailyReminderTrigger" once
+ *     from the Apps Script editor, approve the Gmail-send prompt.
+ *  H) IMPORTANT — after editing this file, you must create a NEW
+ *     deployment VERSION for changes to take effect on the live web app
+ *     (Deploy > Manage deployments > pencil icon > New version > Deploy).
+ *  I) Browser popups additionally require the PERSON to click "Allow"
+ *     on the notification-permission prompt their browser shows right
+ *     after login. If they clicked "Block" earlier, they'll need to
+ *     re-enable it from their browser's site settings — there is no
+ *     way for this app to re-prompt them itself once blocked.
+ **********************************************************************/
+
 const SHEET_ID = '1tyZjvEhNS_1Hx6KXURWF_MLqLYPzKU6BSsXUigrgHmg'; // <-- the sheet with Users + SheetLinks tabs
 const USERS_SHEET = 'Users';
 const SHEETLINKS_SHEET = 'SheetLinks';

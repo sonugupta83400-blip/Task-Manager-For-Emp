@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { background: #f4f5f9; min-height: 100vh; }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff; padding: 18px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    }
+    .topbar .brand { font-size: 19px; font-weight: 700; display:flex; align-items:center; gap:10px; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;
+    }
+    .userinfo { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+    .role-badge {
+      background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; font-size: 11px;
+    }
+    .logout-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4);
+      color: #fff; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* ---------- Stats ---------- */
+    .stats-row {
+      display: flex; gap: 16px; padding: 24px 28px 0;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      flex: 1; min-width: 140px;
+      background: #fff; border-radius: 12px; padding: 18px 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      border-left: 4px solid #764ba2;
+    }
+    .stat-card h3 { font-size: 26px; color: #2d2d3a; }
+    .stat-card p { font-size: 12px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card.total { border-color: #667eea; }
+    .stat-card.done { border-color: #2ecc71; }
+    .stat-card.progress { border-color: #f39c12; }
+    .stat-card.pending { border-color: #e74c3c; }
+
+    /* ---------- Task list ---------- */
+    .content { padding: 24px 28px 40px; }
+    .content h2 { font-size: 18px; color: #2d2d3a; margin-bottom: 16px; }
+    .task-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .task-card {
+      background: #fff; border-radius: 12px; padding: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .task-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    .task-card .task-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+    .task-card h4 { font-size: 15px; color: #2d2d3a; }
+    .task-card .desc { font-size: 13px; color: #777; margin-bottom: 12px; line-height: 1.4; }
+    .task-card .meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #999; }
+
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge.high { background: #ffe6e6; color: #c0392b; }
+    .badge.normal { background: #fff4e0; color: #d68910; }
+    .badge.low { background: #e8f6ee; color: #27ae60; }
+
+    select.status-select {
+      padding: 5px 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 12px; cursor: pointer;
+    }
+
+    .empty-state { text-align: center; color: #999; padding: 60px 20px; }
+    .loader {
+      text-align: center; padding: 60px; color: #999; font-size: 14px;
+    }
+    .assigned-tag {
+      font-size: 11px; color: #764ba2; background: #f1edfb; padding: 2px 8px; border-radius: 20px;
+    }
+
+    /* ---------- Section headers ---------- */
+    .section { margin-bottom: 32px; }
+    .section-title-row {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+    }
+    .section-title-row h2 { font-size: 18px; color: #2d2d3a; }
+    .refresh-btn {
+      background: #f1edfb; color: #764ba2; border: none; padding: 6px 14px;
+      border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600;
+    }
+    .refresh-btn:hover { background: #e4dbf7; }
+
+    /* ---------- Pending-today alert list ---------- */
+    .pending-list { display: flex; flex-direction: column; gap: 10px; }
+    .pending-item {
+      background: #fff; border-left: 4px solid #e74c3c; border-radius: 8px;
+      padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .pending-item .info strong { font-size: 14px; color: #2d2d3a; }
+    .pending-item .info .sub { font-size: 12px; color: #999; margin-top: 2px; }
+    .pending-item a.open-link {
+      background: #e74c3c; color: #fff; text-decoration: none; font-size: 12px;
+      padding: 6px 12px; border-radius: 6px; font-weight: 600; white-space: nowrap;
+    }
+    .pending-item a.open-link:hover { opacity: 0.9; }
+    .all-clear {
+      background: #e8f6ee; color: #27ae60; padding: 16px; border-radius: 10px;
+      text-align: center; font-size: 14px; font-weight: 600;
+    }
+
+    /* ---------- My Sheets cards ---------- */
+    .sheet-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;
+    }
+    .sheet-card {
+      background: #fff; border-radius: 12px; padding: 20px; text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .sheet-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    .sheet-icon {
+      width: 46px; height: 46px; border-radius: 12px; margin: 0 auto 12px;
+      background: linear-gradient(135deg, #43a047, #66bb6a);
+      display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff;
+    }
+    .sheet-card h4 { font-size: 14px; color: #2d2d3a; margin-bottom: 4px; }
+    .sheet-card .owner-tag { font-size: 11px; color: #999; margin-bottom: 14px; }
+    .sheet-card a.open-sheet-btn {
+      display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff; text-decoration: none; font-size: 13px; font-weight: 600;
+      padding: 8px 18px; border-radius: 8px;
+    }
+    .sheet-card a.open-sheet-btn:hover { opacity: 0.9; }
+    .mini-loader { text-align: center; color: #999; padding: 20px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">📋 Task Portal</div>
+    <div class="userinfo">
+      <div class="avatar" id="avatarInitial">?</div>
+      <div>
+        <div id="fullNameLabel" style="font-weight:600;"></div>
+        <span class="role-badge" id="roleLabel"></span>
+      </div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card total"><h3 id="statTotal">0</h3><p>Total Tasks</p></div>
+    <div class="stat-card done"><h3 id="statDone">0</h3><p>Completed</p></div>
+    <div class="stat-card progress"><h3 id="statProgress">0</h3><p>In Progress</p></div>
+    <div class="stat-card pending"><h3 id="statPending">0</h3><p>Pending</p></div>
+  </div>
+
+  <div class="content">
+
+    <div class="section">
+      <div class="section-title-row">
+        <h2>🔥 Today's Pending Work</h2>
+        <button class="refresh-btn" onclick="loadPendingToday()">Refresh</button>
+      </div>
+      <div id="pendingContainer" class="mini-loader">Scanning your sheets…</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title-row">
+        <h2>📁 My Sheets</h2>
+      </div>
+      <div id="sheetsContainer" class="mini-loader">Loading your sheets…</div>
+    </div>
+
+    <div class="section">
+      <h2 id="sectionTitle">Your Tasks</h2>
+      <div id="taskContainer" class="loader">Loading tasks…</div>
+    </div>
+
+  </div>
+
+  <script>
+    const currentUser = {
+      username: "<?= username ?>",
+      role: "<?= role ?>",
+      fullName: "<?= fullName ?>"
+    };
+
+    document.getElementById('fullNameLabel').textContent = currentUser.fullName;
+    document.getElementById('roleLabel').textContent = currentUser.role;
+    document.getElementById('avatarInitial').textContent = currentUser.fullName.charAt(0).toUpperCase();
+    document.getElementById('sectionTitle').textContent =
+      currentUser.role === 'Admin' ? 'All Tasks (Admin View)' : 'Your Tasks';
+
+    function loadStats() {
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          document.getElementById('statTotal').textContent = stats.total;
+          document.getElementById('statDone').textContent = stats.done;
+          document.getElementById('statProgress').textContent = stats.inProgress;
+          document.getElementById('statPending').textContent = stats.pending;
+        })
+        .getTaskStats(currentUser.username, currentUser.role);
+    }
+
+    function priorityClass(p) {
+      p = (p || '').toLowerCase();
+      if (p.includes('high')) return 'high';
+      if (p.includes('low')) return 'low';
+      return 'normal';
+    }
+
+    function loadTasks() {
+      google.script.run
+        .withSuccessHandler(function(tasks) {
+          const container = document.getElementById('taskContainer');
+          if (!tasks || tasks.length === 0) {
+            container.className = 'empty-state';
+            container.innerHTML = '🎉 No tasks assigned right now!';
+            return;
+          }
+          container.className = 'task-grid';
+          container.innerHTML = tasks.map(function(t) {
+            return `
+              <div class="task-card">
+                <div class="task-header">
+                  <h4>${t.name}</h4>
+                  <span class="badge ${priorityClass(t.priority)}">${t.priority}</span>
+                </div>
+                <div class="desc">${t.description || 'No description provided.'}</div>
+                ${currentUser.role === 'Admin' ? `<div class="assigned-tag">👤 ${t.assignedTo}</div><br>` : ''}
+                <div class="meta">
+                  <span>📅 ${t.dueDate || 'No due date'}</span>
+                  <select class="status-select" onchange="updateStatus(${t.rowIndex}, this.value)">
+                    <option ${t.status==='Pending'?'selected':''}>Pending</option>
+                    <option ${t.status==='In Progress'?'selected':''}>In Progress</option>
+                    <option ${t.status==='Done'?'selected':''}>Done</option>
+                  </select>
+                </div>
+              </div>
+            `;
+          }).join('');
+        })
+        .getTasksForUser(currentUser.username, currentUser.role);
+    }
+
+    function updateStatus(rowIndex, newStatus) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) { loadStats(); loadTasks(); }
+          else { alert(res.message); }
+        })
+        .updateTaskStatus(currentUser.username, currentUser.role, rowIndex, newStatus);
+    }
+
+    function loadPendingToday() {
+      const container = document.getElementById('pendingContainer');
+      container.className = 'mini-loader';
+      container.innerHTML = 'Scanning your sheets…';
+
+      google.script.run
+        .withSuccessHandler(function(items) {
+          if (!items || items.length === 0) {
+            container.className = 'all-clear';
+            container.innerHTML = '✅ All caught up — nothing pending for today!';
+            return;
+          }
+          container.className = 'pending-list';
+          container.innerHTML = items.map(function(p) {
+            return `
+              <div class="pending-item">
+                <div class="info">
+                  <strong>${p.task}</strong>
+                  <div class="sub">📄 ${p.sheetLabel}${p.owner ? ' • 👤 ' + p.owner : ''} — Status: ${p.status}</div>
+                </div>
+                <a class="open-link" href="${p.sheetUrl}" target="_blank">Open Sheet</a>
+              </div>
+            `;
+          }).join('');
+        })
+        .withFailureHandler(function(err) {
+          container.className = 'mini-loader';
+          container.innerHTML = 'Could not scan sheets. Check sheet sharing permissions.';
+        })
+        .getTodayPendingWork(currentUser.username, currentUser.role);
+    }
+
+    function loadMySheets() {
+      const container = document.getElementById('sheetsContainer');
+      google.script.run
+        .withSuccessHandler(function(links) {
+          if (!links || links.length === 0) {
+            container.className = 'mini-loader';
+            container.innerHTML = 'No sheets have been linked to you yet. Ask your admin to add one in the SheetLinks tab.';
+            return;
+          }
+          container.className = 'sheet-grid';
+          container.innerHTML = links.map(function(l) {
+            return `
+              <div class="sheet-card">
+                <div class="sheet-icon">📊</div>
+                <h4>${l.label}</h4>
+                ${currentUser.role === 'Admin' ? `<div class="owner-tag">👤 ${l.owner}</div>` : '<div class="owner-tag">Your sheet</div>'}
+                <a class="open-sheet-btn" href="${l.url}" target="_blank">Open Sheet →</a>
+              </div>
+            `;
+          }).join('');
+        })
+        .getUserSheets(currentUser.username, currentUser.role);
+    }
+
+    function logout() {
+      sessionStorage.removeItem('taskportal_user');
+      google.script.run.withSuccessHandler(function(html){
+        document.open(); document.write(html); document.close();
+      }).getLoginHtml();
+    }
+
+    loadStats();
+    loadTasks();
+    loadPendingToday();
+    loadMySheets();
+  </script>
+</body>
+</html>
